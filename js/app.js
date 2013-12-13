@@ -11,9 +11,16 @@
       defaults = {
         element: 'slide',
         notes: false,
-        height: page.height(),
-        width: page.width(),
-        wrapper: 'wrapper'
+        height: function() {
+          return page.height();
+        },
+        width: function() {
+          return page.width();
+        },
+        wrapper: 'wrapper',
+        speed: 1000,
+        onLoad: function() {},
+        onComplete: function() {}
       };
       set = $.extend(defaults, opts);
       notes__ = function(note) {
@@ -31,6 +38,21 @@
         howl.isNumeric = function(n) {
           return !isNaN(parseFloat(n)) && isFinite(n);
         };
+        howl.debounce = function(fn, delay) {
+          var time;
+          delay || (delay = 100);
+          time = null;
+          return function() {
+            var context, parameters, start, timer;
+            context = this;
+            parameters = arguments;
+            start = function() {
+              return fn.apply(context, parameters);
+            };
+            clearTimeout(timer);
+            return timer = setTimeout(start, delay);
+          };
+        };
         howl.countItems = function() {
           var count, items, self;
           self = this;
@@ -45,7 +67,7 @@
             item.attr('id', 'item-first');
           }
           if (index >= 1) {
-            itemDistance += set.height;
+            itemDistance += set.height();
             item.attr('data-position', itemDistance);
           }
           if (index === howl.countItems()) {
@@ -54,14 +76,16 @@
           return item.attr('data-number', index);
         };
         howl.processItems = function() {
-          var items, self;
+          var items, self, _height, _width;
           self = this;
           items = $("." + set.element);
+          _height = set.height();
+          _width = set.width();
           notes__(items);
           return items.each(__bind(function(index, item) {
             notes__(item);
             item = $(item);
-            item.width(set.width).height(set.height);
+            item.width(_width).height(_height);
             return howl.processItem(index, item);
           }, this));
         };
@@ -86,14 +110,17 @@
           current = outer.find("." + set.element + ".in-viewport");
           next = current.next();
           prev = current.prev();
-          setEndState = function() {
-            var inumber;
+          setEndState = function(complete) {
+            var ID, fn, inumber;
+            clearTimeout(ID);
             inumber = $("." + set.element + ".in-viewport").attr('data-number');
             notes__('TRACK DOTS ' + inumber);
             howl.trackDots(inumber);
-            return inner.on('transitionend webkitTransitionEnd oTransitionEnd MSTransitionEnd', function(e) {
+            fn = function() {
+              complete.apply(this);
               return outer.attr('data-animate', 'off');
-            });
+            };
+            return ID = window.setTimeout(fn, set.speed);
           };
           locations = {
             next: function() {
@@ -104,7 +131,7 @@
                   inner.css('transform', "translate3d( 0, -" + (next.attr('data-position')) + "px, 0 )");
                   current.removeClass('in-viewport');
                   next.addClass('in-viewport');
-                  return setEndState();
+                  return setEndState(set.onComplete);
                 }
               }
             },
@@ -116,7 +143,7 @@
                   inner.css('transform', "translate3d( 0, -" + (prev.attr('data-position')) + "px, 0 )");
                   current.removeClass('in-viewport');
                   prev.addClass('in-viewport');
-                  return setEndState();
+                  return setEndState(set.onComplete);
                 }
               }
             },
@@ -128,7 +155,7 @@
                 inner.css('transform', "translate3d( 0, -" + (fetch.attr('data-position')) + "px, 0 )");
                 current.removeClass('in-viewport');
                 fetch.addClass('in-viewport');
-                return setEndState();
+                return setEndState(set.onComplete);
               }
             }
           };
@@ -199,6 +226,20 @@
             return howl.moveTo(id);
           });
         };
+        howl.onResize = function() {
+          var debounce, fn;
+          notes__('WINDOW RESIZED');
+          fn = function() {
+            var current, currentId;
+            itemDistance = 0;
+            current = $("." + set.element).find('.in-viewport');
+            currentId = current.attr('data-number');
+            howl.moveTo(currentId);
+            return howl.processItems();
+          };
+          debounce = howl.debounce(fn, 500);
+          return page.on('resize', debounce);
+        };
         howl.commander = function() {
           howl.processItems();
           howl.wrapItems(howl.setState);
@@ -210,7 +251,8 @@
           howl.navDots();
           return howl.events.loaded = true;
         };
-        return howl.commander();
+        howl.commander();
+        return howl.onResize();
       });
     }
   });

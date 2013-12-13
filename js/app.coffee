@@ -1,18 +1,23 @@
 $ 	 = jQuery
 root = this
-page = $( window )
+page = $ window
 
 root.howl or= {}
 
 $.fn.extend
 	wolfe: ( opts ) ->
+
 		# Default settings
 		defaults =
-			element 	: 'slide'
-			notes		: false
-			height		: page.height()
-			width		: page.width()
-			wrapper 	: 'wrapper'
+
+			element 			: 'slide'
+			notes				: false
+			height				: -> page.height()
+			width				: -> page.width()
+			wrapper 			: 'wrapper'
+			speed 				: 1000
+			onLoad 				: ->
+			onComplete 			: -> 
 
 		set = $.extend defaults, opts
 
@@ -31,7 +36,23 @@ $.fn.extend
 				loaded : false
 
 			howl.isNumeric = ( n ) ->
+
  				return !isNaN( parseFloat( n ) ) and isFinite( n )
+
+ 			howl.debounce = ( fn, delay ) ->
+
+ 				# THANKS @REMY SHARP
+ 				delay or= 100
+ 				time 	= null
+
+ 				return ->
+
+ 					context 	= this
+ 					parameters	= arguments
+ 					start 		= -> fn.apply( context, parameters ) 
+
+ 					clearTimeout( timer )
+ 					timer = setTimeout( start, delay )
 
 			howl.countItems = ->
 
@@ -52,7 +73,7 @@ $.fn.extend
 					item.attr 'id', 'item-first'
 
 				if index >= 1
-					itemDistance += set.height
+					itemDistance += set.height()
 					item.attr 'data-position', itemDistance
 
 				if index is howl.countItems()
@@ -64,6 +85,8 @@ $.fn.extend
 
 				self 	 = this
 				items  	 = $( ".#{set.element}" )
+				_height  = set.height()
+				_width 	 = set.width()
 
 				notes__ items
 
@@ -77,8 +100,8 @@ $.fn.extend
 					#---------------------
 
 					item
-					.width( set.width )
-					.height( set.height )
+					.width( _width )
+					.height( _height )
 
 					howl.processItem( index, item )
 
@@ -107,7 +130,10 @@ $.fn.extend
 				next 	= current.next()
 				prev 	= current.prev()
 
-				setEndState = ->
+				setEndState = ( complete ) ->
+
+					# --> CLEAR TIMEOUT
+					clearTimeout( ID )
 
 					# --> GET CURRENT ELEMENT & TRACK
 					inumber = $( ".#{set.element}.in-viewport" ).attr 'data-number'
@@ -115,11 +141,12 @@ $.fn.extend
 
 					howl.trackDots( inumber )
 
+					fn = ->
+						complete.apply( this )
+						outer.attr 'data-animate', 'off'
 
-					# --> WAIT UNTIL THE TRANSITION ENDS
-					inner.on 'transitionend webkitTransitionEnd oTransitionEnd MSTransitionEnd', ( e ) ->
-
-						return outer.attr 'data-animate', 'off'
+					# --> SETUP THE CALLBACK
+					ID = window.setTimeout( fn, set.speed )		
 
 				locations =
 					next : ->
@@ -136,7 +163,7 @@ $.fn.extend
 								current.removeClass 'in-viewport'
 								next.addClass 'in-viewport'
 
-								setEndState()
+								setEndState( set.onComplete )
 
 					prev : ->
 
@@ -152,7 +179,7 @@ $.fn.extend
 								current.removeClass 'in-viewport'
 								prev.addClass 'in-viewport'
 
-								setEndState()
+								setEndState( set.onComplete )
 
 					longHaul : ( index ) ->
 
@@ -166,13 +193,12 @@ $.fn.extend
 							current.removeClass 'in-viewport'
 							fetch.addClass 'in-viewport'
 
-							setEndState()
+							setEndState( set.onComplete )
 
 
 				if location is 'next' then locations[ 'next' ]()
 				if location is 'prev' then locations[ 'prev' ]()
 				if howl.isNumeric( location ) then locations[ 'longHaul' ]( location )
-
 
 			howl.scrollItems = ->
 
@@ -244,6 +270,23 @@ $.fn.extend
 
 					howl.moveTo( id )
 
+			howl.onResize = ->
+
+				notes__ 'WINDOW RESIZED'
+
+				fn = ->
+					# -- > RESET THE DISTANCE
+					itemDistance = 0
+					current 	 = $( ".#{set.element}" ).find '.in-viewport'
+					currentId 	 = current.attr 'data-number'
+
+					howl.moveTo( currentId )
+					howl.processItems()
+
+				debounce = howl.debounce( fn, 500 )
+
+				page.on 'resize', debounce
+
 			howl.commander = ->
 
 				howl.processItems()
@@ -257,8 +300,8 @@ $.fn.extend
 
 				howl.events.loaded = true
 
-
 			howl.commander()
+			howl.onResize()
 
 
 
