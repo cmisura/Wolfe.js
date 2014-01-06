@@ -19,8 +19,12 @@
         },
         wrapper: 'wrapper',
         speed: 1000,
-        onLoad: function() {},
-        onComplete: function() {}
+        onLoad: function() {
+          return notes__('SET UP COMPLETE');
+        },
+        onComplete: function() {
+          return notes__('MOVE COMPLETE');
+        }
       };
       set = $.extend(defaults, opts);
       notes__ = function(note) {
@@ -249,6 +253,7 @@
             howl.trackDots(0);
           }
           howl.navDots();
+          set.onLoad();
           return howl.events.loaded = true;
         };
         howl.commander();

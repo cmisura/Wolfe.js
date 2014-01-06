@@ -1,3 +1,9 @@
+#  * jQuery Wolfe Plugin v1.0.0
+#  * https://github.com/cmisura/wolfe.js
+#  *
+#  * Copyright 2014 Clayton Misura
+#  * Released under the MIT license
+
 $ 	 = jQuery
 root = this
 page = $ window
@@ -16,16 +22,14 @@ $.fn.extend
 			width				: -> page.width()
 			wrapper 			: 'wrapper'
 			speed 				: 1000
-			onLoad 				: ->
-			onComplete 			: -> 
+			onLoad 				: -> notes__ 'SET UP COMPLETE'
+			onComplete 			: -> notes__ 'MOVE COMPLETE'
 
 		set = $.extend defaults, opts
 
-		# Simple logger.
 		notes__ = ( note ) ->
 			console?.log '====', note, '====' if set.notes
 
-		# _Insert magic here._
 		return @each () ->
 
 			notes__ 'INIT', set.height, set.width
@@ -284,7 +288,7 @@ $.fn.extend
 					howl.processItems()
 
 				debounce = howl.debounce( fn, 500 )
-
+				
 				page.on 'resize', debounce
 
 			howl.commander = ->
@@ -297,11 +301,13 @@ $.fn.extend
 				if howl.events.loaded is false then howl.trackDots( 0 )
 
 				howl.navDots()
+				set.onLoad()
 
 				howl.events.loaded = true
-
+			
 			howl.commander()
 			howl.onResize()
+			
 
 
 
